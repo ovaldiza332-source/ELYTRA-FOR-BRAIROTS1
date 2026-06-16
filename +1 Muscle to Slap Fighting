@@ -1,0 +1,461 @@
+-- NOME DO JOGO
+local NOME_JOGO = "+1 Muscle to Slap Fighting"
+
+-- ==============================================
+-- COORDENADAS EXATAS
+-- ==============================================
+local locais = {
+    -- Primeira aba
+    upgrades    = CFrame.new(19, 4, 39),
+    peso        = CFrame.new(41, 4, 79),
+    esteiras    = CFrame.new(-53, 4, 107),
+    areafinal   = CFrame.new(-9, 6, -272),
+    area1       = CFrame.new(-8, 6, -238),
+
+    -- Segunda aba
+    area2       = CFrame.new(-8, 6, -207),
+    area3       = CFrame.new(-8, 6, -178),
+    area4       = CFrame.new(-7, 6, -145),
+    area5       = CFrame.new(-8, 6, -114),
+    area6       = CFrame.new(-8, 6, -84),
+    area7       = CFrame.new(-8, 6, -51),
+    area8       = CFrame.new(-6, 5, -19)
+}
+
+-- SERVIÇOS
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+-- CONFIGURAÇÕES
+local velocidadeAtivada = false
+local menuFixo = false
+local abrindo = false
+local VELOCIDADE_PADRAO = 50
+local VELOCIDADE_NORMAL = 16
+local TAMANHO_NORMAL = UDim2.new(0, 250, 0, 340)
+local TAMANHO_FECHADO = UDim2.new(0, 0, 0, 0)
+local TEMPO_ANIMACAO = 0.28
+local ESTILO = TweenInfo.new(TEMPO_ANIMACAO, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+local cores = {
+    borda = {Color3.fromRGB(138,43,226), Color3.fromRGB(255,0,0), Color3.fromRGB(0,255,0), Color3.fromRGB(0,120,255), Color3.fromRGB(255,255,0)},
+    letra = {Color3.new(1,1,1), Color3.fromRGB(0,255,255), Color3.fromRGB(255,100,200), Color3.fromRGB(150,255,100)}
+}
+local indiceCorBorda = 1
+local indiceCorLetra = 1
+
+-- ==============================================
+-- FUNÇÃO DE TELEPORTE INSTANTÂNEO
+-- ==============================================
+local function TP(destino)
+    local char = Player.Character or Player.CharacterAdded:Wait()
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChild("Humanoid")
+    if hrp and hum then
+        hum.Sit = false
+        hum.PlatformStand = true
+        hrp.CFrame = destino
+        hum.PlatformStand = false
+    end
+end
+
+-- ==================================================
+-- SOM DE CLIQUE
+-- ==================================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "MenuTP_MuscleSlap"
+ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.ResetOnSpawn = false
+
+local SomBotao = Instance.new("Sound")
+SomBotao.Name = "SomClique"
+SomBotao.SoundId = "rbxassetid://171782868"
+SomBotao.Volume = 0.6
+SomBotao.Looped = false
+SomBotao.Parent = ScreenGui
+
+local function TocarSom()
+    SomBotao.TimePosition = 0
+    SomBotao:Play()
+end
+
+-- ==================================================
+-- BARRA SUPERIOR
+-- ==================================================
+local BarraSuperior = Instance.new("Frame")
+BarraSuperior.Name = "BarraJogo"
+BarraSuperior.Parent = ScreenGui
+BarraSuperior.Size = UDim2.new(0, 250, 0, 42)
+BarraSuperior.Position = UDim2.new(0.02, 0, 0.03, 0)
+BarraSuperior.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+BarraSuperior.BorderSizePixel = 0
+BarraSuperior.Draggable = true
+BarraSuperior.Active = true
+BarraSuperior.ClipsDescendants = true
+local cantosBarra = Instance.new("UICorner")
+cantosBarra.CornerRadius = UDim.new(0.4, 0)
+cantosBarra.Parent = BarraSuperior
+
+local TextoNome = Instance.new("TextLabel")
+TextoNome.Parent = BarraSuperior
+TextoNome.Size = UDim2.new(1, -58, 1, 0)
+TextoNome.Position = UDim2.new(0, 10, 0, 0)
+TextoNome.BackgroundTransparency = 1
+TextoNome.Text = NOME_JOGO
+TextoNome.TextColor3 = Color3.new(1, 1, 1)
+TextoNome.Font = Enum.Font.FredokaOne
+TextoNome.TextSize = 10
+TextoNome.TextXAlignment = Enum.TextXAlignment.Left
+TextoNome.TextYAlignment = Enum.TextYAlignment.Center
+
+local BotaoAbrir = Instance.new("TextButton")
+BotaoAbrir.Name = "BotaoAbrirFechar"
+BotaoAbrir.Parent = BarraSuperior
+BotaoAbrir.Size = UDim2.new(0, 48, 0, 30)
+BotaoAbrir.Position = UDim2.new(1, -52, 0.5, -15)
+BotaoAbrir.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+BotaoAbrir.BorderSizePixel = 0
+BotaoAbrir.Text = "ABRIR"
+BotaoAbrir.TextColor3 = Color3.new(1, 1, 1)
+BotaoAbrir.Font = Enum.Font.GothamBold
+BotaoAbrir.TextSize = 11
+local cantosBotao = Instance.new("UICorner")
+cantosBotao.CornerRadius = UDim.new(0.3, 0)
+cantosBotao.Parent = BotaoAbrir
+
+-- ==================================================
+-- MENU PRINCIPAL
+-- ==================================================
+local MenuFora = Instance.new("Frame")
+MenuFora.Name = "MenuPrincipal"
+MenuFora.Parent = ScreenGui
+MenuFora.Size = TAMANHO_FECHADO
+MenuFora.Position = UDim2.new(0.5, -125, 0.5, -170)
+MenuFora.BackgroundColor3 = cores.borda[indiceCorBorda]
+MenuFora.BackgroundTransparency = 1
+MenuFora.Visible = false
+MenuFora.Draggable = true
+MenuFora.Active = true
+MenuFora.ClipsDescendants = true
+
+local MenuDentro = Instance.new("Frame")
+MenuDentro.Parent = MenuFora
+MenuDentro.Size = UDim2.new(1, -4, 1, -4)
+MenuDentro.Position = UDim2.new(0, 2, 0, 2)
+MenuDentro.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MenuDentro.BackgroundTransparency = 1
+
+local TituloMenu = Instance.new("TextLabel")
+TituloMenu.Parent = MenuDentro
+TituloMenu.Size = UDim2.new(1, -40, 0, 35)
+TituloMenu.Position = UDim2.new(0, 10, 0, 0)
+TituloMenu.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+TituloMenu.BackgroundTransparency = 1
+TituloMenu.Text = "TP MENU"
+TituloMenu.TextColor3 = cores.letra[indiceCorLetra]
+TituloMenu.Font = Enum.Font.GothamBold
+TituloMenu.TextSize = 14
+TituloMenu.TextYAlignment = Enum.TextYAlignment.Center
+
+local BotaoFecharX = Instance.new("TextButton")
+BotaoFecharX.Parent = MenuDentro
+BotaoFecharX.Size = UDim2.new(0, 32, 0, 32)
+BotaoFecharX.Position = UDim2.new(1, -34, 0, 2)
+BotaoFecharX.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+BotaoFecharX.BackgroundTransparency = 1
+BotaoFecharX.Text = "X"
+BotaoFecharX.TextColor3 = cores.letra[indiceCorLetra]
+BotaoFecharX.Font = Enum.Font.GothamBold
+BotaoFecharX.TextSize = 14
+
+-- ==================================================
+-- ABAS: PRINCIPAL | ÁREAS | INFO | SET
+-- ==================================================
+local LadoAbas = Instance.new("Frame")
+LadoAbas.Parent = MenuDentro
+LadoAbas.Size = UDim2.new(0, 60, 1, -40)
+LadoAbas.Position = UDim2.new(0, 0, 0, 38)
+LadoAbas.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+LadoAbas.BackgroundTransparency = 1
+
+local Aba1 = Instance.new("TextButton")
+Aba1.Parent = LadoAbas
+Aba1.Size = UDim2.new(1, 0, 0, 36)
+Aba1.Position = UDim2.new(0, 0, 0, 0)
+Aba1.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Aba1.Text = "PRINCIPAL"
+Aba1.TextColor3 = Color3.new(1, 1, 1)
+Aba1.Font = Enum.Font.GothamBold
+Aba1.TextSize = 10
+Aba1.BackgroundTransparency = 1
+
+local Aba2 = Instance.new("TextButton")
+Aba2.Parent = LadoAbas
+Aba2.Size = UDim2.new(1, 0, 0, 36)
+Aba2.Position = UDim2.new(0, 0, 0, 40)
+Aba2.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Aba2.Text = "ÁREAS"
+Aba2.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+Aba2.Font = Enum.Font.GothamBold
+Aba2.TextSize = 10
+Aba2.BackgroundTransparency = 1
+
+local Aba3 = Instance.new("TextButton")
+Aba3.Parent = LadoAbas
+Aba3.Size = UDim2.new(1, 0, 0, 36)
+Aba3.Position = UDim2.new(0, 0, 0, 80)
+Aba3.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Aba3.Text = "INFO"
+Aba3.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+Aba3.Font = Enum.Font.GothamBold
+Aba3.TextSize = 10
+Aba3.BackgroundTransparency = 1
+
+local Aba4 = Instance.new("TextButton")
+Aba4.Parent = LadoAbas
+Aba4.Size = UDim2.new(1, 0, 0, 36)
+Aba4.Position = UDim2.new(0, 0, 0, 120)
+Aba4.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Aba4.Text = "SET"
+Aba4.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+Aba4.Font = Enum.Font.GothamBold
+Aba4.TextSize = 10
+Aba4.BackgroundTransparency = 1
+
+-- ==================================================
+-- CONTEÚDO DAS ABAS
+-- ==================================================
+-- Aba Principal
+local ConteudoPrincipal = Instance.new("Frame")
+ConteudoPrincipal.Parent = MenuDentro
+ConteudoPrincipal.Size = UDim2.new(1, -64, 1, -44)
+ConteudoPrincipal.Position = UDim2.new(0, 62, 0, 40)
+ConteudoPrincipal.BackgroundTransparency = 1
+ConteudoPrincipal.Visible = true
+local LayoutPrincipal = Instance.new("UIListLayout")
+LayoutPrincipal.Parent = ConteudoPrincipal
+LayoutPrincipal.Padding = UDim.new(0, 4)
+
+-- Aba Áreas
+local ConteudoAreas = Instance.new("Frame")
+ConteudoAreas.Parent = MenuDentro
+ConteudoAreas.Size = UDim2.new(1, -64, 1, -44)
+ConteudoAreas.Position = UDim2.new(0, 62, 0, 40)
+ConteudoAreas.BackgroundTransparency = 1
+ConteudoAreas.Visible = false
+local LayoutAreas = Instance.new("UIListLayout")
+LayoutAreas.Parent = ConteudoAreas
+LayoutAreas.Padding = UDim.new(0, 4)
+
+-- Aba Info
+local ConteudoInfo = Instance.new("Frame")
+ConteudoInfo.Parent = MenuDentro
+ConteudoInfo.Size = UDim2.new(1, -64, 1, -44)
+ConteudoInfo.Position = UDim2.new(0, 62, 0, 40)
+ConteudoInfo.BackgroundTransparency = 1
+ConteudoInfo.Visible = false
+local TextoInfo = Instance.new("TextLabel")
+TextoInfo.Parent = ConteudoInfo
+TextoInfo.Size = UDim2.new(1, 0, 1, 0)
+TextoInfo.BackgroundTransparency = 1
+TextoInfo.Text = "✅ Teleporte INSTANTÂNEO\n\nJogo: "..NOME_JOGO.."\n\n• Principal: Upgrades, Peso, Esteiras, Áreas iniciais\n• Áreas: Progressão completa do mapa"
+TextoInfo.TextColor3 = cores.letra[indiceCorLetra]
+TextoInfo.Font = Enum.Font.Gotham
+TextoInfo.TextSize = 11
+TextoInfo.TextWrapped = true
+TextoInfo.TextXAlignment = Enum.TextXAlignment.Center
+TextoInfo.TextYAlignment = Enum.TextYAlignment.Center
+
+-- Aba Set
+local ConteudoSet = Instance.new("Frame")
+ConteudoSet.Parent = MenuDentro
+ConteudoSet.Size = UDim2.new(1, -64, 1, -44)
+ConteudoSet.Position = UDim2.new(0, 62, 0, 40)
+ConteudoSet.BackgroundTransparency = 1
+ConteudoSet.Visible = false
+local LayoutSet = Instance.new("UIListLayout")
+LayoutSet.Parent = ConteudoSet
+LayoutSet.Padding = UDim.new(0, 6)
+
+-- ==================================================
+-- BOTÕES DE TELEPORTE
+-- ==================================================
+local function CriarBotaoTP(pai, nome, destino)
+    local botao = Instance.new("TextButton")
+    botao.Parent = pai
+    botao.Size = UDim2.new(1, 0, 0, 26)
+    botao.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    botao.Text = nome
+    botao.TextColor3 = Color3.new(1, 1, 1)
+    botao.Font = Enum.Font.GothamBold
+    botao.TextSize = 11
+    local canto = Instance.new("UICorner")
+    canto.CornerRadius = UDim.new(0, 4)
+    canto.Parent = botao
+    botao.MouseButton1Click:Connect(function()
+        TocarSom()
+        TP(destino)
+    end)
+end
+
+-- Botões Aba Principal
+CriarBotaoTP(ConteudoPrincipal, "UPGRADES", locais.upgrades)
+CriarBotaoTP(ConteudoPrincipal, "PESO", locais.peso)
+CriarBotaoTP(ConteudoPrincipal, "ESTEIRAS", locais.esteiras)
+CriarBotaoTP(ConteudoPrincipal, "ÁREA -238", locais.area1)
+CriarBotaoTP(ConteudoPrincipal, "ÁREA FINAL", locais.areafinal)
+
+-- Botões Aba Áreas
+CriarBotaoTP(ConteudoAreas, "ÁREA -207", locais.area2)
+CriarBotaoTP(ConteudoAreas, "ÁREA -178", locais.area3)
+CriarBotaoTP(ConteudoAreas, "ÁREA -145", locais.area4)
+CriarBotaoTP(ConteudoAreas, "ÁREA -114", locais.area5)
+CriarBotaoTP(ConteudoAreas, "ÁREA -84", locais.area6)
+CriarBotaoTP(ConteudoAreas, "ÁREA -51", locais.area7)
+CriarBotaoTP(ConteudoAreas, "ÁREA -19", locais.area8)
+
+-- ==================================================
+-- FUNÇÕES DA ABA SET
+-- ==================================================
+local function CriarBotaoConfig(nome)
+    local botao = Instance.new("TextButton")
+    botao.Parent = ConteudoSet
+    botao.Size = UDim2.new(1, 0, 0, 28)
+    botao.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    botao.Text = nome
+    botao.TextColor3 = cores.letra[indiceCorLetra]
+    botao.Font = Enum.Font.GothamBold
+    botao.TextSize = 11
+    local canto = Instance.new("UICorner")
+    canto.CornerRadius = UDim.new(0, 4)
+    canto.Parent = botao
+    return botao
+end
+
+local BotaoCorBorda = CriarBotaoConfig("Trocar Cor da Borda")
+BotaoCorBorda.MouseButton1Click:Connect(function()
+    indiceCorBorda = indiceCorBorda + 1
+    if indiceCorBorda > #cores.borda then indiceCorBorda = 1 end
+    MenuFora.BackgroundColor3 = cores.borda[indiceCorBorda]
+end)
+
+local BotaoCorLetras = CriarBotaoConfig("Trocar Cor das Letras")
+BotaoCorLetras.MouseButton1Click:Connect(function()
+    indiceCorLetra = indiceCorLetra + 1
+    if indiceCorLetra > #cores.letra then indiceCorLetra = 1 end
+    local cor = cores.letra[indiceCorLetra]
+    TituloMenu.TextColor3 = cor
+    BotaoFecharX.TextColor3 = cor
+    TextoInfo.TextColor3 = cor
+    Aba1.TextColor3 = cor
+    Aba2.TextColor3 = cor
+    Aba3.TextColor3 = cor
+    Aba4.TextColor3 = cor
+end)
+
+local BotaoVelocidade = CriarBotaoConfig("Velocidade: DESATIVADA")
+BotaoVelocidade.MouseButton1Click:Connect(function()
+    velocidadeAtivada = not velocidadeAtivada
+    BotaoVelocidade.Text = velocidadeAtivada and "Velocidade: ATIVADA" or "Velocidade: DESATIVADA"
+    local humanoide = Player.Character and Player.Character:FindFirstChild("Humanoid")
+    if humanoide then
+        humanoide.WalkSpeed = velocidadeAtivada and VELOCIDADE_PADRAO or VELOCIDADE_NORMAL
+    end
+end)
+
+local BotaoFixar = CriarBotaoConfig("Menu: MEXIVEL")
+BotaoFixar.MouseButton1Click:Connect(function()
+    menuFixo = not menuFixo
+    BotaoFixar.Text = menuFixo and "Menu: FIXO" or "Menu: MEXIVEL"
+    MenuFora.Draggable = not menuFixo
+end)
+
+-- ==================================================
+-- CONTROLES E ANIMAÇÃO
+-- ==================================================
+local menuAberto = false
+local function AnimarMenu(abrir)
+    if abrindo then return end
+    abrindo = true
+    if abrir then
+        MenuFora.Visible = true
+        local t1 = TweenService:Create(MenuFora, ESTILO, {Size = TAMANHO_NORMAL, BackgroundTransparency = 0})
+        local t2 = TweenService:Create(MenuDentro, ESTILO, {BackgroundTransparency = 0})
+        local t3 = TweenService:Create(TituloMenu, ESTILO, {BackgroundTransparency = 0})
+        local t4 = TweenService:Create(LadoAbas, ESTILO, {BackgroundTransparency = 0})
+        t1:Play() t2:Play() t3:Play() t4:Play()
+        t1.Completed:Wait()
+    else
+        local t1 = TweenService:Create(MenuFora, ESTILO, {Size = TAMANHO_FECHADO, BackgroundTransparency = 1})
+        local t2 = TweenService:Create(MenuDentro, ESTILO, {BackgroundTransparency = 1})
+        local t3 = TweenService:Create(TituloMenu, ESTILO, {BackgroundTransparency = 1})
+        local t4 = TweenService:Create(LadoAbas, ESTILO, {BackgroundTransparency = 1})
+        t1:Play() t2:Play() t3:Play() t4:Play()
+        t1.Completed:Wait()
+        MenuFora.Visible = false
+    end
+    abrindo = false
+end
+
+local function AbrirFecharMenu()
+    TocarSom()
+    menuAberto = not menuAberto
+    BotaoAbrir.Text = menuAberto and "FECHAR" or "ABRIR"
+    AnimarMenu(menuAberto)
+end
+
+BotaoAbrir.MouseButton1Click:Connect(AbrirFecharMenu)
+BotaoFecharX.MouseButton1Click:Connect(AbrirFecharMenu)
+
+-- Trocar abas
+local function TrocarAba(numero)
+    TocarSom()
+    ConteudoPrincipal.Visible = false
+    ConteudoAreas.Visible = false
+    ConteudoInfo.Visible = false
+    ConteudoSet.Visible = false
+    Aba1.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    Aba1.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+    Aba2.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    Aba2.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+    Aba3.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    Aba3.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+    Aba4.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    Aba4.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+    if numero == 1 then
+        ConteudoPrincipal.Visible = true
+        Aba1.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        Aba1.TextColor3 = Color3.new(1, 1, 1)
+    elseif numero == 2 then
+        ConteudoAreas.Visible = true
+        Aba2.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        Aba2.TextColor3 = Color3.new(1, 1, 1)
+    elseif numero == 3 then
+        ConteudoInfo.Visible = true
+        Aba3.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        Aba3.TextColor3 = Color3.new(1, 1, 1)
+    elseif numero == 4 then
+        ConteudoSet.Visible = true
+        Aba4.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        Aba4.TextColor3 = Color3.new(1, 1, 1)
+    end
+end
+
+Aba1.MouseButton1Click:Connect(function() TrocarAba(1) end)
+Aba2.MouseButton1Click:Connect(function() TrocarAba(2) end)
+Aba3.MouseButton1Click:Connect(function() TrocarAba(3) end)
+Aba4.MouseButton1Click:Connect(function() TrocarAba(4) end)
+
+-- Manter velocidade ativada
+RunService.RenderStepped:Connect(function()
+    if velocidadeAtivada then
+        local humanoide = Player.Character and Player.Character:FindFirstChild("Humanoid")
+        if humanoide then
+            humanoide.WalkSpeed = VELOCIDADE_PADRAO
+        end
+    end
+end)
+
